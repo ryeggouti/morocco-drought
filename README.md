@@ -1,6 +1,6 @@
 # Is Morocco Running Out of Rain?
 
-**Live site:** https://ryeggouti.github.io/morocco-rain/
+**Live site:** https://ryeggouti.github.io/morocco-drought/
 
 Not exactly. It's getting hotter.
 
