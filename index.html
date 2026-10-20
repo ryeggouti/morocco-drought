@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Is Morocco Running Out of Rain?</title>
+<meta name="description" content="34 rainy seasons across all of Morocco, tested: the rain hasn't clearly fallen, but the heat has risen.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* =====================================================================
+   DESIGN TOKENS: same system as "Lions in the Data", with its own accents
+   ===================================================================== */
+:root {
+  --background: #08080a;
+  --foreground: #f3f1ea;
+  --surface: #111114;
+  --muted: #807f78;
+  --line: rgba(243, 241, 234, 0.1);
+  --line-strong: rgba(243, 241, 234, 0.22);
+  --accent: #d08c3e;          /* dry ochre: heat, dust, drought */
+  --water: #4f95c9;           /* rain */
+  --font-display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --font-sans: "Onest", system-ui, sans-serif;
+  --gutter: 2.5rem;
+  --section: 9rem;
+  --t-display: 7.5rem; --t-h1: 5rem; --t-h2: 3.25rem; --t-h3: 1.75rem;
+  --t-lead: 1.375rem; --t-body: 1.0625rem; --t-eyebrow: 0.8125rem;
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Adaptive grid: the root font size follows the screen width, so the whole layout scales together */
+html { font-size: 16px; background: var(--background); }
+@media (max-width: 1920px) { html { font-size: 0.833333vw; } }
+@media (max-width: 1440px) { html { font-size: 1.111111vw; } }
+@media (max-width: 1024px) { html { font-size: 1.5625vw; } }
+@media (max-width: 640px) { html { font-size: 4.444444vw; } :root { --gutter: 16px; --section: 6rem; } }
+
+/* Reset and base */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+ul, ol { list-style: none; }
+button, a { font: inherit; color: inherit; background: none; border: 0; text-decoration: none; cursor: pointer; }
+body {
+  background: var(--background); color: var(--foreground);
+  font-family: var(--font-sans); font-size: var(--t-body); line-height: 1.6;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+::selection { background: var(--accent); color: var(--background); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+main { position: relative; overflow-x: hidden; }
+
+.display { font-family: var(--font-display); font-weight: 400; text-transform: uppercase; letter-spacing: -0.01em; }
+.eyebrow {
+  display: flex; align-items: center; gap: 0.75rem;
+  font-size: var(--t-eyebrow); line-height: 1.2; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.22em; color: var(--muted);
+}
+.eyebrow::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.section { padding: var(--section) var(--gutter); }
+.section + .section { border-top: 1px solid var(--line); }
+.heading { margin-top: 1.5rem; font-size: var(--t-h2); line-height: 0.95; max-width: 16ch; }
+@media (min-width: 640px) { .heading { font-size: var(--t-h1); } }
+.lead { margin-top: 2rem; max-width: 46ch; font-size: var(--t-lead); line-height: 1.45; color: var(--muted); }
+.copy { margin-top: 1.5rem; max-width: 46ch; color: var(--muted); }
+.copy strong { color: var(--foreground); font-weight: 600; }
+.small-label { font-size: var(--t-eyebrow); text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); }
+.note { margin-top: 1.5rem; font-size: var(--t-eyebrow); text-transform: uppercase; letter-spacing: 0.14em; line-height: 1.6; color: var(--muted); max-width: 48ch; }
+.hot { color: var(--accent); }
+.wet { color: var(--water); }
+
+.split { display: grid; gap: 3rem; }
+@media (min-width: 1024px) {
+  .split { grid-template-columns: repeat(12, 1fr); gap: var(--gutter); align-items: start; }
+  .split > .left { grid-column: span 5; }
+  .split > .right { grid-column: span 7; }
+}
+.chart-box { position: relative; height: 24rem; }
+
+/* Reveal animations: text rises out of a mask, blocks fade up, once, when scrolled into view */
+.mask { display: inline-block; overflow: hidden; vertical-align: top; padding-top: 0.08em; margin-top: -0.08em; }
+.rise {
+  display: inline-block; transform: translateY(110%); opacity: 0;
+  transition: transform 900ms var(--ease-expo), opacity 900ms var(--ease-expo); transition-delay: var(--d, 0ms);
+}
+.revealed .rise { transform: none; opacity: 1; }
+.reveal {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 600ms var(--ease-expo), transform 600ms var(--ease-expo); transition-delay: var(--d, 0ms);
+}
+.reveal.revealed { opacity: 1; transform: none; }
+
+/* Navigation */
+.site-header {
+  position: fixed; inset-inline: 0; top: 0; z-index: 50;
+  background: linear-gradient(to bottom, var(--background) 55%, transparent);
+}
+.site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.5rem var(--gutter); }
+.logo { font-size: var(--t-eyebrow); font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; color: var(--muted); }
+.nav-links { display: none; gap: 2.5rem; }
+.nav-links a { position: relative; font-size: var(--t-eyebrow); font-weight: 500; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); transition: color 300ms; }
+.nav-links a::after { content: ""; position: absolute; left: 0; bottom: -0.25rem; height: 1px; width: 0; background: var(--accent); transition: width 300ms var(--ease-expo); }
+.nav-links a:hover { color: var(--foreground); }
+.nav-links a:hover::after { width: 100%; }
+@media (min-width: 768px) { .nav-links { display: flex; } }
+
+/* Hero: the question, the answer, and Morocco drawn from its 62 grid points */
+.hero { position: relative; min-height: 100svh; display: grid; align-content: center; gap: 2.5rem; padding: 7rem var(--gutter) 4rem; }
+.hero h1 { font-size: 3.75rem; line-height: 0.9; max-width: 11ch; }
+.hero h1 .line { display: block; }
+.hero-answer { font-family: var(--font-display); text-transform: uppercase; font-size: var(--t-h3); line-height: 1.1; }
+.hero-desc { max-width: 34rem; color: var(--muted); }
+.hero-map { width: 100%; max-width: 30rem; justify-self: center; }
+.hero-map circle { opacity: 0; transform: scale(0); transform-box: fill-box; transform-origin: center; animation: dot-in 700ms var(--ease-expo) forwards; animation-delay: var(--d, 0ms); }
+@keyframes dot-in { to { opacity: 1; transform: scale(1); } }
+.hero-key { display: flex; flex-wrap: wrap; gap: 1.25rem; justify-content: center; }
+.hero-key .dot { display: inline-block; width: 0.625rem; height: 0.625rem; border-radius: 50%; margin-right: 0.5rem; vertical-align: middle; }
+@media (min-width: 1024px) {
+  .hero { grid-template-columns: 1.1fr 0.9fr; column-gap: var(--gutter); }
+  .hero-text { display: grid; gap: 2rem; align-content: center; }
+  .hero h1 { font-size: 9.5rem; }
+  .hero-map-wrap { grid-row: span 1; }
+}
+@media (min-width: 640px) and (max-width: 1023px) { .hero h1 { font-size: 7rem; } }
+
+/* Marquee */
+.marquee { overflow: hidden; border-block: 1px solid var(--line); padding-block: 2rem; }
+.marquee-track { display: flex; width: max-content; animation: marquee 26s linear infinite; }
+.marquee-item { display: flex; align-items: center; font-size: var(--t-h2); white-space: nowrap; }
+.marquee-item::after { content: ""; width: 0.625rem; height: 0.625rem; border-radius: 50%; background: var(--accent); margin-inline: 2rem; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+
+/* Big figures */
+.figures { display: flex; flex-wrap: wrap; gap: 2.5rem; margin-top: 2rem; }
+.figure { font-family: var(--font-display); font-size: var(--t-h1); line-height: 1; }
+.figures .small-label { display: block; margin-top: 0.5rem; max-width: 16ch; }
+
+/* Interactive map */
+.map-svg { width: 100%; max-width: 34rem; height: auto; display: block; margin-inline: auto; }
+.map-svg circle:focus { outline: none; }
+.map-svg circle:focus-visible { stroke: var(--foreground); stroke-width: 0.14; }
+.map-svg circle { cursor: pointer; stroke: var(--background); stroke-width: 0.06; transition: stroke 200ms; }
+.map-svg circle.selected { stroke: var(--foreground); stroke-width: 0.14; }
+.detail { margin-top: 1rem; padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: 0.25rem; min-height: 4.5rem; color: var(--muted); }
+.detail strong { color: var(--foreground); font-weight: 600; }
+.scale { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+.scale .bar { height: 0.5rem; flex: 1; max-width: 14rem; border-radius: 999px; background: linear-gradient(to right, #b0463a, #d08c3e, #3a3a40, #6aa7d6, #2f6fb0); }
+
+/* Region table and p-value table */
+.rows { margin-top: 2rem; border-top: 1px solid var(--line); }
+.rows li { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: baseline; padding: 1.25rem 0; border-bottom: 1px solid var(--line); }
+.rows .name { font-size: var(--t-h3); font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
+.rows .sub { display: block; margin-top: 0.25rem; }
+.rows .val { font-family: var(--font-display); font-size: var(--t-h2); line-height: 1; text-align: right; }
+.rows .val .small-label { display: block; font-family: var(--font-sans); margin-top: 0.375rem; }
+
+.verdicts { margin-top: 4rem; display: grid; border-top: 1px solid var(--line); }
+.verdict { padding: 2.5rem 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.75rem; }
+.verdict .figure { font-size: var(--t-display); transition: color 340ms; }
+.verdict:hover .figure { color: var(--accent); }
+.verdict .tag { display: inline-block; align-self: flex-start; font-size: var(--t-eyebrow); font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; padding: 0.375rem 0.75rem; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); }
+.verdict .tag.yes { border-color: var(--accent); color: var(--accent); }
+@media (min-width: 1024px) {
+  .verdicts { grid-template-columns: repeat(3, 1fr); }
+  .verdict:not(:first-child) { border-left: 1px solid var(--line); padding-left: 2rem; }
+}
+
+/* Footer */
+.method { padding: var(--section) var(--gutter) 0; border-top: 1px solid var(--line); }
+.big-link { display: inline-flex; align-items: baseline; gap: 0.75rem; margin-top: 3rem; font-size: var(--t-h3); font-weight: 600; transition: transform 340ms, color 340ms; }
+.big-link span { color: var(--accent); }
+.big-link:hover { transform: translateX(14px); color: var(--accent); }
+.footer-bar { margin-top: var(--section); border-top: 1px solid var(--line); padding: 3rem 0; display: grid; gap: 2.5rem; }
+.footer-bar .sig { font-size: var(--t-h2); line-height: 1; }
+.notes li { color: var(--muted); padding-left: 1.25rem; position: relative; }
+.notes li + li { margin-top: 0.75rem; }
+.notes li::before { content: ""; position: absolute; left: 0; top: 0.75em; width: 0.5rem; height: 1px; background: var(--accent); }
+@media (min-width: 1024px) {
+  .footer-bar { grid-template-columns: 4fr 5fr 3fr; }
+  .footer-bar > :last-child { text-align: right; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+  .rise, .reveal, .hero-map circle { transform: none !important; opacity: 1 !important; transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="site-nav" aria-label="Main">
+    <a class="logo" href="#top">Morocco in Data</a>
+    <ul class="nav-links">
+      <li><a href="#wet">Wet years</a></li>
+      <li><a href="#map">Where</a></li>
+      <li><a href="#heat">Heat</a></li>
+      <li><a href="#harvests">Harvests</a></li>
+      <li><a href="#proof">Proof</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero" id="top">
+    <div class="hero-text">
+      <h1 class="display" id="hero-title" aria-label="Is Morocco running out of rain?">
+        <span class="line">Is Morocco</span>
+        <span class="line">running out</span>
+        <span class="line">of <span class="hot">rain?</span></span>
+      </h1>
+      <p class="hero-answer reveal" id="hero-answer">Not exactly. <span class="hot">It's getting hotter.</span></p>
+      <p class="hero-desc reveal" id="hero-desc">I analysed 34 rainy seasons (1991–2025) across a grid of 62 points covering all of Morocco, then tested which changes are real and which could be chance.</p>
+    </div>
+    <div class="hero-map-wrap">
+      <svg class="hero-map" id="hero-map" role="img" aria-label="Morocco drawn as 62 dots, coloured by how much each area's rainfall changed after 2015"></svg>
+      <div class="hero-key small-label">
+        <span><span class="dot" style="background:#b0463a"></span>Less rain since 2015</span>
+        <span><span class="dot" style="background:#6aa7d6"></span>More rain</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="marquee" aria-label="Key results">
+    <div class="marquee-track display" id="marquee"></div>
+  </section>
+
+  <!-- FINDING 1 -->
+  <section class="section split" id="wet">
+    <div class="left">
+      <div class="eyebrow reveal">Finding 01</div>
+      <h2 class="heading display split-words">The wet years stopped.</h2>
+      <p class="copy reveal" id="wet-copy">Each bar is one rainy season (September to August), as a share of the 34-season average.</p>
+      <div class="figures reveal">
+        <div><div class="figure hot" id="wet-gap">–</div><span class="small-label">Seasons since the last very wet one</span></div>
+        <div><div class="figure" id="wet-record">–</div><span class="small-label">Longest gap on record</span></div>
+      </div>
+      <p class="note reveal">"Very wet" = 25% or more above average. Seasons are matched to all 62 grid points.</p>
+    </div>
+    <div class="right reveal"><div class="chart-box"><canvas id="season-chart" aria-label="Rainfall per season as a percentage of the average"></canvas></div></div>
+  </section>
+
+  <!-- FINDING 2 -->
+  <section class="section split" id="map">
+    <div class="left">
+      <div class="eyebrow reveal">Finding 02</div>
+      <h2 class="heading display split-words">The centre lost the most.</h2>
+      <p class="copy reveal">Average rain per season in 2015–2025, compared with 1991–2015, at each grid point. Regions are weighted by how much rain they normally get, because that's where Morocco's water comes from.</p>
+      <ul class="rows" id="region-rows"></ul>
+    </div>
+    <div class="right reveal">
+      <svg class="map-svg" id="map-svg" role="img" aria-label="Interactive map of rainfall change at 62 grid points"></svg>
+      <div class="scale small-label"><span>−40%</span><span class="bar"></span><span>+40%</span></div>
+      <p class="detail" id="map-detail">Tap a dot to see that area's rainfall before and after 2015. Bigger dot = wetter area.</p>
+    </div>
+  </section>
+
+  <!-- FINDING 3 -->
+  <section class="section split" id="heat">
+    <div class="left">
+      <div class="eyebrow reveal">Finding 03</div>
+      <h2 class="heading display split-words">The thirsty air.</h2>
+      <p class="copy reveal"><strong>Evaporation demand</strong> is how much water the air would pull out of soil, plants and reservoirs if it could. Hotter, drier air pulls harder, so the same rain goes less far.</p>
+      <div class="figures reveal">
+        <div><div class="figure wet" id="rain-trend">–</div><span class="small-label" id="rain-trend-label">Rain per decade</span></div>
+        <div><div class="figure hot" id="et0-trend">–</div><span class="small-label" id="et0-trend-label">Evaporation demand per decade</span></div>
+      </div>
+      <p class="copy reveal" id="heat-copy"></p>
+    </div>
+    <div class="right reveal"><div class="chart-box"><canvas id="heat-chart" aria-label="Rain and evaporation demand per season, as change from their first-decade average"></canvas></div></div>
+  </section>
+
+  <!-- WHY IT MATTERS -->
+  <section class="section split" id="harvests">
+    <div class="left">
+      <div class="eyebrow reveal">Why it matters</div>
+      <h2 class="heading display split-words">Rain decides the harvest.</h2>
+      <p class="copy reveal" id="harvest-copy">Each dot is one season: national rain against the cereal yield of the harvest that followed.</p>
+      <div class="figures reveal">
+        <div><div class="figure hot" id="harvest-r">–</div><span class="small-label">Correlation, rain vs yield</span></div>
+        <div><div class="figure" id="harvest-share">–</div><span class="small-label">Of harvest swings linked to rain</span></div>
+      </div>
+      <p class="note reveal">Below the line, like 2020: the rain came late, and January–March heat hurt the crops (FAO). Totals hide timing.</p>
+    </div>
+    <div class="right reveal"><div class="chart-box"><canvas id="harvest-chart" aria-label="Scatter plot of seasonal rain against cereal yield"></canvas></div></div>
+  </section>
+
+  <!-- WHAT THE DATA CAN AND CAN'T PROVE -->
+  <section class="section" id="proof">
+    <div class="eyebrow reveal">The proof</div>
+    <h2 class="heading display split-words">What the data can and can't prove.</h2>
+    <p class="copy reveal">A p-value is the chance of seeing a trend this strong if nothing were really changing. Below 0.05 counts as statistically significant.</p>
+    <div class="verdicts" id="verdicts"></div>
+  </section>
+
+  <!-- METHOD AND FOOTER -->
+  <footer class="method" id="method">
+    <div class="eyebrow reveal">How I built it</div>
+    <h2 class="heading display split-words">62 points, 34 seasons, every number tested.</h2>
+    <p class="copy reveal">Daily rain and evaporation demand (FAO reference evapotranspiration) from Open-Meteo's historical archive, on a 1° grid (about 100 km) across all of Morocco. Cereal yields from the World Bank. Analysed in Python (pandas, SciPy, GeoPandas) in Google Colab; the site is HTML, CSS and JavaScript with Chart.js. I used AI tools to help write some of the code; I chose the questions, checked the results and wrote the findings.</p>
+    <a class="big-link reveal" href="https://github.com/ryeggouti" target="_blank" rel="noreferrer noopener">View the code on GitHub <span>↗</span></a>
+
+    <div class="footer-bar">
+      <div>
+        <p class="sig display">Is Morocco running out of rain?</p>
+        <p class="small-label" style="margin-top:1rem">Part of Morocco in Data · also: <a href="https://ryeggouti.github.io/morocco-world-cup-2022/" style="color:var(--foreground)">Lions in the Data</a></p>
+      </div>
+      <div>
+        <p class="small-label" style="margin-bottom:1rem">Data notes</p>
+        <ul class="notes">
+          <li>Open-Meteo data is reanalysis: weather observations combined with a model, not readings from one station per city.</li>
+          <li>The grid covers Morocco including its southern provinces. National figures are the average of all 62 points.</li>
+          <li>A rainy season runs September to August, so "2022/23" is matched to the 2023 harvest.</li>
+          <li>Evaporation demand is what the air could take, not water actually lost; when soil is dry, real evaporation is lower.</li>
+        </ul>
+      </div>
+      <div>
+        <p class="small-label">© <span id="year">2026</span> ryeggouti</p>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<script type="module">
+  import("https://cdn.jsdelivr.net/npm/lenis@1.3.19/dist/lenis.mjs")
+    .then(({ default: Lenis }) => {
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const lenis = new Lenis({ smoothWheel: true });
+      window.lenis = lenis;
+      const raf = t => { lenis.raf(t); requestAnimationFrame(raf); };
+      requestAnimationFrame(raf);
+    })
+    .catch(() => {});
+</script>
+
+<script>
+/* =====================================================================
+   SETUP
+   ===================================================================== */
+const css = getComputedStyle(document.documentElement);
+const ACCENT = css.getPropertyValue("--accent").trim();
+const WATER = css.getPropertyValue("--water").trim();
+const MUTED = css.getPropertyValue("--muted").trim();
+const LINE = "rgba(243, 241, 234, 0.1)";
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SVG = "http://www.w3.org/2000/svg";
+document.getElementById("year").textContent = new Date().getFullYear();
+
+if (window.Chart) {
+  Chart.defaults.color = MUTED;
+  Chart.defaults.borderColor = LINE;
+  Chart.defaults.font.family = "Onest, system-ui, sans-serif";
+}
+const axisTitle = text => ({ display: true, text, color: MUTED });
+const seasonLabel = s => `${s}/${String(s + 1).slice(2)}`;
+
+// Smooth anchor scrolling
+document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener("click", e => {
+  const target = document.querySelector(a.getAttribute("href"));
+  if (!target) return;
+  e.preventDefault();
+  if (window.lenis) window.lenis.scrollTo(target, { offset: -90 });
+  else scrollTo({ top: target.getBoundingClientRect().top + scrollY - 90, behavior: REDUCED ? "auto" : "smooth" });
+}));
+
+/* =====================================================================
+   REVEALS
+   ===================================================================== */
+function splitWords(el, stagger = 45) {
+  const words = el.textContent.trim().split(/\s+/);
+  el.setAttribute("aria-label", el.textContent.trim());
+  el.textContent = "";
+  words.forEach((w, i) => {
+    const mask = document.createElement("span");
+    mask.className = "mask";
+    mask.setAttribute("aria-hidden", "true");
+    const s = document.createElement("span");
+    s.className = "rise";
+    s.textContent = w;
+    s.style.setProperty("--d", i * stagger + "ms");
+    mask.appendChild(s);
+    el.appendChild(mask);
+    if (i < words.length - 1) el.appendChild(document.createTextNode(" "));
+  });
+}
+const observer = new IntersectionObserver(entries => entries.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add("revealed"); observer.unobserve(e.target); }
+}), { threshold: 0 });
+const watch = el => (REDUCED ? el.classList.add("revealed") : observer.observe(el));
+document.querySelectorAll(".split-words").forEach(el => { splitWords(el); watch(el); });
+document.querySelectorAll(".reveal").forEach(el => { if (!el.closest(".hero")) watch(el); });
+
+// Hero: each line of the question rises in, then the answer
+document.querySelectorAll("#hero-title .line").forEach((line, i) => {
+  line.setAttribute("aria-hidden", "true");
+  line.innerHTML = `<span class="mask"><span class="rise" style="--d:${i * 140}ms">${line.innerHTML}</span></span>`;
+});
+setTimeout(() => document.getElementById("hero-title").classList.add("revealed"), REDUCED ? 0 : 150);
+setTimeout(() => document.getElementById("hero-answer").classList.add("revealed"), REDUCED ? 0 : 750);
+setTimeout(() => document.getElementById("hero-desc").classList.add("revealed"), REDUCED ? 0 : 950);
+
+/* =====================================================================
+   SMALL MATH HELPERS (kept here so every number on the page is calculated from the data)
+   ===================================================================== */
+const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+function linreg(xs, ys) {               // slope of the best straight line through the points
+  const mx = mean(xs), my = mean(ys);
+  let num = 0, den = 0;
+  xs.forEach((x, i) => { num += (x - mx) * (ys[i] - my); den += (x - mx) ** 2; });
+  return { slope: num / den, intercept: my - (num / den) * mx };
+}
+function pearson(xs, ys) {              // correlation, from -1 to +1
+  const mx = mean(xs), my = mean(ys);
+  let n = 0, a = 0, b = 0;
+  xs.forEach((x, i) => { n += (x - mx) * (ys[i] - my); a += (x - mx) ** 2; b += (ys[i] - my) ** 2; });
+  return n / Math.sqrt(a * b);
+}
+
+// Colour for a rainfall change: red-ochre for less rain, blue for more
+function changeColor(pct) {
+  const t = Math.max(-1, Math.min(1, pct / 40));
+  const stops = t < 0
+    ? [[58, 58, 64], [208, 140, 62], [176, 70, 58]]
+    : [[58, 58, 64], [106, 167, 214], [47, 111, 176]];
+  const k = Math.abs(t) * 2, i = Math.min(1, Math.floor(k)), f = k - i;
+  const [a, b] = [stops[i], stops[i + 1]];
+  return `rgb(${a.map((v, j) => Math.round(v + (b[j] - v) * f)).join(",")})`;
+}
+
+// Map projection: longitude to x, latitude to y, squeezed east-west for Morocco's latitude
+const project = p => ({ x: (p.lon + 18) * 0.86, y: 36 - p.lat });
+
+/* =====================================================================
+   LOAD THE DATA AND BUILD EACH SECTION
+   ===================================================================== */
+fetch("rain_data.json")
+  .then(r => r.json())
+  .then(data => {
+    const seasons = data.seasons.filter(s => s.rain != null);
+    buildHeroMap(data.points);
+    const wet = buildWetYears(seasons);
+    buildMarquee(data.trend, wet);
+    buildMap(data.points);
+    buildHeat(seasons, data.trend);       // the text works even if the chart library fails to load
+    buildHarvests(seasons);
+    buildVerdicts(data.trend);
+  });
+
+// HERO: Morocco drawn as its 62 grid points, dropping in from north to south
+function buildHeroMap(points) {
+  const svg = document.getElementById("hero-map");
+  svg.setAttribute("viewBox", "-0.6 -0.6 15.2 16.2");
+  [...points].sort((a, b) => b.lat - a.lat || a.lon - b.lon).forEach((p, i) => {
+    const { x, y } = project(p);
+    const c = document.createElementNS(SVG, "circle");
+    c.setAttribute("cx", x);
+    c.setAttribute("cy", y);
+    c.setAttribute("r", 0.14 + Math.sqrt(p.before) / 95);
+    c.setAttribute("fill", changeColor(p.change));
+    c.style.setProperty("--d", 400 + i * 22 + "ms");
+    svg.appendChild(c);
+  });
+}
+
+// FINDING 1: seasons as % of average, the very wet ones highlighted
+function buildWetYears(seasons) {
+  const avg = mean(seasons.map(s => s.rain));
+  const pct = seasons.map(s => (s.rain / avg) * 100);
+
+  // Longest run without a very wet season, and the current one
+  let run = 0, best = 0, bestEnd = null;
+  pct.forEach((v, i) => {
+    run = v >= 125 ? 0 : run + 1;
+    if (run > best) { best = run; bestEnd = seasons[i].season; }
+  });
+  const current = run;
+  const lastWet = [...seasons].reverse().find((s, i) => pct[pct.length - 1 - i] >= 125);
+  document.getElementById("wet-gap").textContent = current;
+  document.getElementById("wet-record").textContent = best;
+  const driest = seasons.map((s, i) => ({ s: s.season, v: pct[i] })).sort((a, b) => a.v - b.v).slice(0, 5);
+  const recordStart = bestEnd - best + 1;
+  document.getElementById("wet-copy").innerHTML =
+    `Each bar is one rainy season (September to August), as a share of the 34-season average of ${Math.round(avg)} mm. ` +
+    `The last very wet season was <strong>${seasonLabel(lastWet.season)}</strong>. ` +
+    (current >= best
+      ? `The current gap is the longest since 1991. `
+      : `The current gap is long, but not a record: ${seasonLabel(recordStart)} to ${seasonLabel(bestEnd)} went ${best} seasons. `) +
+    `And recent seasons aren't record-dry: the five driest were all in ${seasonLabel(Math.max(...driest.map(d => d.s)))} or earlier.`;
+
+  if (window.Chart) new Chart(document.getElementById("season-chart"), {
+    type: "bar",
+    data: {
+      labels: seasons.map(s => seasonLabel(s.season)),
+      datasets: [{
+        label: "% of average",
+        data: pct.map(v => +v.toFixed(0)),
+        backgroundColor: pct.map(v => (v >= 125 ? WATER : v < 100 ? ACCENT : "#3a3a40")),
+        borderRadius: 2,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.raw}% of average` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 90, autoSkip: true } },
+        y: { beginAtZero: true, title: axisTitle("% of average rainfall") },
+      },
+    },
+    plugins: [{                           // dashed lines at 100% (average) and 125% (very wet)
+      id: "refLines",
+      afterDraw(chart) {
+        const { ctx, chartArea: a, scales: { y } } = chart;
+        [[100, MUTED], [125, WATER]].forEach(([v, col]) => {
+          ctx.save(); ctx.strokeStyle = col; ctx.setLineDash([4, 4]); ctx.beginPath();
+          ctx.moveTo(a.left, y.getPixelForValue(v)); ctx.lineTo(a.right, y.getPixelForValue(v)); ctx.stroke(); ctx.restore();
+        });
+      },
+    }],
+  });
+  return { current, best, avg };
+}
+
+// FINDING 2: interactive map, plus region summary weighted by normal rainfall
+function buildMap(points) {
+  const svg = document.getElementById("map-svg");
+  const detail = document.getElementById("map-detail");
+  svg.setAttribute("viewBox", "-0.6 -0.6 15.2 16.2");
+  const region = p => (p.lat > 33 ? "North" : p.lat >= 29 ? "Centre" : "South");
+
+  [...points].sort((a, b) => b.before - a.before).forEach(p => {
+    const { x, y } = project(p);
+    const c = document.createElementNS(SVG, "circle");
+    c.setAttribute("cx", x);
+    c.setAttribute("cy", y);
+    c.setAttribute("r", 0.12 + Math.sqrt(p.before) / 90);
+    c.setAttribute("fill", changeColor(p.change));
+    c.setAttribute("tabindex", "0");
+    c.setAttribute("aria-label", `${p.lat}°N ${Math.abs(p.lon)}°W: ${p.before} mm before, ${p.recent} mm after, ${p.change}%`);
+    const show = () => {
+      svg.querySelectorAll(".selected").forEach(d => d.classList.remove("selected"));
+      c.classList.add("selected");
+      const sign = p.change > 0 ? "+" : "";
+      detail.innerHTML = `<strong>${region(p)} · ${p.lat}°N, ${Math.abs(p.lon)}°W</strong><br>` +
+        `${Math.round(p.before)} mm per season before 2015 → ${Math.round(p.recent)} mm after (${sign}${p.change.toFixed(0)}%)`;
+    };
+    c.addEventListener("click", show);
+    c.addEventListener("keydown", e => { if (e.key === "Enter") show(); });
+    svg.appendChild(c);
+  });
+
+  const rows = document.getElementById("region-rows");
+  const info = { North: "Above 33°N: Rif, Tangier, Fès, Oujda", Centre: "29–33°N: Marrakech, Beni Mellal, Atlas", South: "Below 29°N: Saharan provinces" };
+  ["North", "Centre", "South"].forEach((name, i) => {
+    const g = points.filter(p => region(p) === name);
+    const totalBefore = g.reduce((s, p) => s + p.before, 0);
+    const weighted = g.reduce((s, p) => s + p.change * p.before, 0) / totalBefore;
+    const mm = mean(g.map(p => p.recent - p.before));
+    const li = document.createElement("li");
+    li.className = "reveal";
+    li.style.setProperty("--d", i * 90 + "ms");
+    li.innerHTML = `<span><span class="name">${name}</span><span class="sub small-label">${info[name]} · ${Math.round(mean(g.map(p => p.before)))} mm normal</span></span>` +
+      `<span class="val ${weighted < 0 ? "hot" : "wet"}">${weighted > 0 ? "+" : ""}${weighted.toFixed(1)}%` +
+      `<span class="small-label">${mm > 0 ? "+" : ""}${mm.toFixed(0)} mm per season</span></span>`;
+    rows.appendChild(li);
+    watch(li);
+  });
+}
+
+// FINDING 3: rain vs evaporation demand, both shown as change from their 1990s average
+function buildHeat(seasons, trend) {
+  const fmt = v => `${v > 0 ? "+" : ""}${v.toFixed(1)}`;
+  document.getElementById("rain-trend").textContent = fmt(trend.rain.slope);
+  document.getElementById("et0-trend").textContent = fmt(trend.et0.slope);
+  document.getElementById("rain-trend-label").textContent = `mm of rain per decade · p = ${trend.rain.p}`;
+  document.getElementById("et0-trend-label").textContent = `mm of evaporation demand per decade · p = ${trend.et0.p}`;
+
+  const early = seasons.filter(s => s.season <= 2014), late = seasons.filter(s => s.season >= 2015);
+  const d = k => mean(late.map(s => s[k])) - mean(early.map(s => s[k]));
+  const dRain = d("rain"), dEt0 = d("et0");
+  const share = (dEt0 / (dEt0 - dRain)) * 100;
+  document.getElementById("heat-copy").innerHTML =
+    `Since 2015, compared with 1991–2015, the average season brought <strong>${Math.abs(dRain).toFixed(0)} mm ${dRain < 0 ? "less" : "more"} rain</strong>, ` +
+    `but the air demanded <strong>${dEt0.toFixed(0)} mm more water</strong>. About <strong>${Math.round(share)}%</strong> of the worsening water balance comes from heat, not from less rain.`;
+
+  const base = seasons.filter(s => s.season <= 2000);
+  const r0 = mean(base.map(s => s.rain)), e0 = mean(base.map(s => s.et0));
+  const xs = seasons.map(s => s.season);
+  const fitE = linreg(xs, seasons.map(s => s.et0 - e0));
+  if (window.Chart) new Chart(document.getElementById("heat-chart"), {
+    type: "line",
+    data: {
+      labels: seasons.map(s => seasonLabel(s.season)),
+      datasets: [
+        { label: "Evaporation demand", data: seasons.map(s => +(s.et0 - e0).toFixed(1)), borderColor: ACCENT, backgroundColor: ACCENT, pointRadius: 2, tension: 0.25 },
+        { label: "Trend", data: xs.map(x => +(fitE.intercept + fitE.slope * x).toFixed(1)), borderColor: ACCENT, borderDash: [5, 5], pointRadius: 0, borderWidth: 1.5 },
+        { label: "Rain", data: seasons.map(s => +(s.rain - r0).toFixed(1)), borderColor: WATER, backgroundColor: WATER, pointRadius: 2, tension: 0.25 },
+      ],
+    },
+    options: {
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8, filter: i => i.text !== "Trend" } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, autoSkip: true } },
+        y: { title: axisTitle("Change from 1991–2000 average (mm per season)") },
+      },
+    },
+  });
+}
+
+// WHY IT MATTERS: rain against the next harvest's cereal yield
+function buildHarvests(seasons) {
+  const pairs = seasons.filter(s => s.harvest != null);
+  const r = pearson(pairs.map(s => s.rain), pairs.map(s => s.harvest));
+  document.getElementById("harvest-r").textContent = r.toFixed(2);
+  document.getElementById("harvest-share").textContent = Math.round(r * r * 100) + "%";
+  const worst = [...pairs].sort((a, b) => a.harvest - b.harvest).slice(0, 4).map(s => s.season + 1);
+  document.getElementById("harvest-copy").innerHTML =
+    `Each dot is one season: national rain against the cereal yield of the harvest that followed (${pairs.length} seasons, World Bank data). ` +
+    `The worst harvests (${worst.sort().join(", ")}) all followed dry seasons.`;
+
+  const fit = linreg(pairs.map(s => s.rain), pairs.map(s => s.harvest));
+  const xmin = Math.min(...pairs.map(s => s.rain)), xmax = Math.max(...pairs.map(s => s.rain));
+  if (window.Chart) new Chart(document.getElementById("harvest-chart"), {
+    type: "scatter",
+    data: {
+      datasets: [
+        { label: "Harvests", data: pairs.map(s => ({ x: s.rain, y: s.harvest, year: s.season + 1 })), backgroundColor: ACCENT, pointRadius: 5, pointHoverRadius: 7 },
+        { label: "Trend", type: "line", data: [{ x: xmin, y: fit.intercept + fit.slope * xmin }, { x: xmax, y: fit.intercept + fit.slope * xmax }], borderColor: MUTED, borderDash: [5, 5], pointRadius: 0 },
+      ],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { filter: i => i.datasetIndex === 0, callbacks: { label: c => `${c.raw.year} harvest: ${Math.round(c.raw.y)} kg/ha after ${Math.round(c.raw.x)} mm` } },
+      },
+      scales: {
+        x: { title: axisTitle("Rain in the season before (mm, national average)") },
+        y: { title: axisTitle("Cereal yield (kg per hectare)") },
+      },
+    },
+  });
+}
+
+// THE PROOF: one card per trend, with its p-value and a plain-words verdict
+function buildVerdicts(trend) {
+  const box = document.getElementById("verdicts");
+  const cards = [
+    ["Rain", "rain", "Total rain per season"],
+    ["Evaporation demand", "et0", "How much water the air pulls"],
+    ["Water balance", "balance", "Rain minus evaporation demand"],
+  ];
+  cards.forEach(([name, key, sub], i) => {
+    const t = trend[key];
+    const sig = t.p < 0.05;
+    const words = !sig ? "Could be chance" : t.p < 0.01 ? "Strong, real trend" : "Just significant";
+    const div = document.createElement("div");
+    div.className = "verdict reveal";
+    div.style.setProperty("--d", i * 110 + "ms");
+    div.innerHTML = `<span class="small-label">${name} · ${sub}</span>` +
+      `<span class="figure">${t.slope > 0 ? "+" : ""}${t.slope.toFixed(1)}</span>` +
+      `<span class="small-label">mm per decade · p = ${t.p.toFixed(3)}</span>` +
+      `<span class="tag${sig ? " yes" : ""}">${words}</span>`;
+    box.appendChild(div);
+    watch(div);
+  });
+}
+
+// MARQUEE: the key results, written twice for a seamless loop
+function buildMarquee(trend, wet) {
+  const words = [
+    `Rain trend: ${trend.rain.slope > 0 ? "+" : ""}${trend.rain.slope} mm per decade`,
+    `p = ${trend.rain.p}: could be chance`,
+    `Evaporation demand: +${trend.et0.slope} mm per decade`,
+    `p = ${trend.et0.p}`,
+    `${wet.current} seasons without a very wet year`,
+  ];
+  const track = document.getElementById("marquee");
+  [...words, ...words].forEach((w, i) => {
+    const s = document.createElement("span");
+    s.className = "marquee-item";
+    s.textContent = w;
+    if (i >= words.length) s.setAttribute("aria-hidden", "true");
+    track.appendChild(s);
+  });
+}
+</script>
+</body>
+</html>
