@@ -33,5 +33,8 @@ The centre's rainfall drop (p = 0.098) is suggestive but not statistically signi
 - A rainy season runs September to August, so "2022/23" is matched to the 2023 harvest.
 - Evaporation demand is what the air could take, not water actually lost; when soil is dry, real evaporation is lower.
 
-Part of **Morocco in Data**. See also:
-[How Did Morocco Reach the Semi-Final?](https://ryeggouti.github.io/morocco-world-cup-2022/)
+## License
+Code: MIT. Data: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0), [World Bank](https://data.worldbank.org/) (CC BY 4.0) and [Natural Earth](https://www.naturalearthdata.com/) (public domain).
+
+Part of **[Morocco in Data](https://ryeggouti.github.io/)**. See also:
+[How Did Morocco Reach the Semi-Final?](https://ryeggouti.github.io/morocco-world-cup-2022/) · [Stork Flight](https://ryeggouti.github.io/stork-flight/)
