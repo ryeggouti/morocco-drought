@@ -7,7 +7,7 @@ Not exactly. It's getting hotter.
 I analysed 34 rainy seasons (1991/92–2024/25) across a grid of 62 points covering all of Morocco, then tested which changes are statistically real and which could be chance.
 
 ## Key findings
-1. **The wet years stopped.** The last very wet season (25%+ above average) was 2014/15. The 10 seasons since are the second-longest gap since 1991; the longest was 12 seasons (1996/97–2007/08). Recent seasons aren't record-dry: the five driest were all in 2007/08 or earlier.
+1. **The wet years stopped.** The last very wet season (25%+ above average) was 2014/15. The 10 seasons since are the second-longest gap since 1991; the longest was 12 seasons (1996/97–2007/08). Recent seasons are dry, but mostly not record-dry: the four driest were all in 2007/08 or earlier, and 2023/24 is the 5th driest (69% of average).
 2. **The centre lost the most.** Comparing 2015–2025 with 1991–2015, weighted by how much rain each area normally gets: Centre −14.0% (about −33 mm per season), North −4.7% (about −19 mm), South +13.5% (only about +5 mm).
 3. **The thirsty air.** Rainfall shows no clear trend, but evaporation demand rose significantly. Since 2015 the average season brought 13 mm less rain, while the air demanded 59 mm more water, so about 80% of the worsening water balance comes from heat.
 4. **Rain decides the harvest.** National rainfall vs the next cereal harvest (World Bank yields, 33 seasons): r = 0.61, p = 0.0001. The worst harvests all followed dry seasons.

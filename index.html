@@ -491,7 +491,12 @@ function buildWetYears(seasons) {
     (current >= best
       ? `The current gap is the longest since 1991. `
       : `The current gap is long, but not a record: ${seasonLabel(recordStart)} to ${seasonLabel(bestEnd)} went ${best} seasons. `) +
-    `And recent seasons aren't record-dry: the five driest were all in ${seasonLabel(Math.max(...driest.map(d => d.s)))} or earlier.`;
+    (() => {
+      const recent = driest.filter(d => d.s >= 2015);
+      if (!recent.length) return `And recent seasons aren't record-dry: none of the five driest is from the last decade.`;
+      const ranks = recent.map(d => `${seasonLabel(d.s)} (${driest.indexOf(d) + 1}${["st","nd","rd"][driest.indexOf(d)] || "th"} driest)`).join(" and ");
+      return `Recent seasons are dry, but mostly not record-dry: of the five driest, only ${ranks} is from the last decade.`;
+    })();
 
   if (window.Chart) new Chart(document.getElementById("season-chart"), {
     type: "bar",
