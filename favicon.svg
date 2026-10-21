@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Is Morocco Running Out of Rain?: raindrops that shrink and fade from ochre to grey -->
+  <circle cx="32" cy="32" r="32" fill="#1b1a1e"/>
+  <defs><path id="d" d="M0-9C3.5-3.5 6-.5 6 3a6 6 0 0 1-12 0c0-3.5 2.5-6.5 6-12z"/></defs>
+  <use href="#d" transform="translate(41 19) scale(1.05)" fill="#d08c3e"/>
+  <use href="#d" transform="translate(27 24) scale(0.95)" fill="#d08c3e"/>
+  <use href="#d" transform="translate(44 36) scale(0.8)" fill="#a8713a"/>
+  <use href="#d" transform="translate(30 41) scale(0.68)" fill="#807f78"/>
+  <use href="#d" transform="translate(19 37) scale(0.55)" fill="#807f78"/>
+  <use href="#d" transform="translate(38 50) scale(0.45)" fill="#5c5b56"/>
+  <use href="#d" transform="translate(23 51) scale(0.35)" fill="#5c5b56"/>
+</svg>
